@@ -53,6 +53,8 @@ Implemented the CIK lookup → latest
 unit tests around the parts most likely to silently break (latest-filing selection,
 10-K/A exclusion, CSV tag-splitting), a self-review pass, and documentation.
 
+> This project was built iteratively with Claude Code (Anthropic). Full prompt logs can be found [here](PROMPT_LOG.md).
+
 ## Reasoning & trade-offs
 
 - **Input format: `config.yaml`.** A list of jobs, each carrying its own params
