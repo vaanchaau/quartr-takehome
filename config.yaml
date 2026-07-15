@@ -1,8 +1,12 @@
 job_list:
   - job_name: sec_company_tickers_list
+    flag_dry_run: false
     user_agent: "Van Chau Dao vaanchaau@gmail.com"
     max_retries: 3
+    raw_json_dir: files/sec-edgar/raw
+    csv_dir: files/sec-edgar/tickers
   - job_name: annual_sec_10k_report
+    flag_dry_run: true
     user_agent: "Van Chau Dao vaanchaau@gmail.com"
     companies:
       - AAPL

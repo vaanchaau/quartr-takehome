@@ -1,5 +1,6 @@
 """Entry point: load config and run each configured job."""
 
+import asyncio
 import sys
 
 import yaml
@@ -10,10 +11,14 @@ CONFIG_PATH = "config.yaml"
 
 
 def main() -> None:
+    asyncio.run(_run_jobs())
+    return
+
+
+async def _run_jobs() -> None:
     config = _load_config(CONFIG_PATH)
     for job in config["job_list"]:
-        _run_job(job["job_name"])
-    return
+        await _run_job(job)
 
 
 def _load_config(path: str) -> dict:
@@ -21,10 +26,19 @@ def _load_config(path: str) -> dict:
         return yaml.safe_load(f)
 
 
-def _run_job(job_name: str) -> None:
-    match job_name:
+async def _run_job(job: dict) -> None:
+    if job["flag_dry_run"]:
+        print(f"Dry run... {job['job_name']}")
+        return
+
+    match job["job_name"]:
         case "sec_company_tickers_list":
-            perform_sec_company_tickers_list()
+            await perform_sec_company_tickers_list(
+                job["user_agent"],
+                max_retries=job["max_retries"],
+                raw_json_dir=job["raw_json_dir"],
+                csv_dir=job["csv_dir"],
+            )
         case "annual_sec_10k_report":
             perform_annual_sec_10k_report_job()
         case _:

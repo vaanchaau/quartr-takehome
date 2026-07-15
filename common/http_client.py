@@ -1,9 +1,10 @@
-"""Async HTTP client for one host, with retrying GETs."""
+"""Async HTTP client with retrying GETs against full URLs."""
 
 from __future__ import annotations
 
 import asyncio
 import random
+import sys
 
 import httpx
 
@@ -13,18 +14,17 @@ DEFAULT_BACKOFF_BASE_SECONDS = 1.0
 
 
 class HttpClient:
-    """Wraps an httpx.AsyncClient for one host, with headers set on every request."""
+    """Wraps an httpx.AsyncClient, with headers set on every request."""
 
     def __init__(
         self,
-        base_url: str,
         headers: dict[str, str],
         *,
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         max_retries: int = DEFAULT_MAX_RETRIES,
         backoff_base_seconds: float = DEFAULT_BACKOFF_BASE_SECONDS,
     ) -> None:
-        self._client = httpx.AsyncClient(base_url=base_url, headers=headers, timeout=timeout_seconds)
+        self._client = httpx.AsyncClient(headers=headers, timeout=timeout_seconds)
         self._max_retries = max_retries
         self._backoff_base_seconds = backoff_base_seconds
 
@@ -35,18 +35,23 @@ class HttpClient:
     async def __aexit__(self, *exc_info: object) -> None:
         await self._client.__aexit__(*exc_info)
 
-    async def try_get(self, path: str) -> httpx.Response | None:
-        """GET path, returning None on request errors (transport, decoding,
-        too-many-redirects) instead of raising."""
+    async def try_get(self, url: str) -> httpx.Response | None:
+        """GET url. Logs and returns None on request errors (transport, decoding,
+        too-many-redirects); logs and returns the response as-is on error statuses."""
         try:
-            return await self._client.get(path)
-        except httpx.RequestError:
+            response = await self._client.get(url)
+        except httpx.RequestError as exc:
+            print(f"{type(exc).__name__} fetching {url}: {exc}", file=sys.stderr)
             return None
 
-    async def try_get_with_retry(self, path: str) -> httpx.Response:
-        """GET path, retrying on 429/5xx/transport errors up to max_retries."""
+        if response.is_error:
+            print(f"HTTP {response.status_code} fetching {url}", file=sys.stderr)
+        return response
+
+    async def try_get_with_retry(self, url: str) -> httpx.Response:
+        """GET url, retrying on 429/5xx/transport errors up to max_retries."""
         for attempt in range(self._max_retries + 1):
-            response = await self.try_get(path)
+            response = await self.try_get(url)
             is_last_attempt = attempt == self._max_retries
 
             if response is not None and not _is_retryable(response):
@@ -56,7 +61,7 @@ class HttpClient:
             if is_last_attempt:
                 if response is not None:
                     response.raise_for_status()
-                raise httpx.TransportError(f"exhausted retries fetching {path}")
+                raise httpx.TransportError(f"exhausted retries fetching {url}")
 
             await asyncio.sleep(_delay_seconds(attempt, self._backoff_base_seconds, response))
 
