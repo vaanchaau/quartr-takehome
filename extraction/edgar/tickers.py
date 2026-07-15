@@ -60,10 +60,14 @@ def _to_csv_row(entry: dict) -> dict:
     company_name, tags = _split_company_name_and_tag(entry["title"])
     return {
         "ticker": entry["ticker"],
-        "cik_str": entry["cik_str"],
+        "cik_str": _format_cik(entry["cik_str"]),
         "company_name": company_name,
         "tags": tags,
     }
+
+
+def _format_cik(cik: int) -> str:
+    return f"CIK{cik:010d}"
 
 
 def _split_company_name_and_tag(title: str) -> tuple[str, str]:
