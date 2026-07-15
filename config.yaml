@@ -16,5 +16,6 @@ job_list:
       - NFLX
       - GS
     max_retries: 3
+    max_concurrency: 5
     tickers_csv_dir: files/sec-edgar/tickers
     pdf_dir: files/sec-edgar/10k-pdf

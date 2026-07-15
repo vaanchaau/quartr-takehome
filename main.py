@@ -46,6 +46,7 @@ async def _run_job(job: dict) -> None:
                 max_retries=job["max_retries"],
                 tickers_csv_dir=job["tickers_csv_dir"],
                 pdf_dir=job["pdf_dir"],
+                max_concurrency=job["max_concurrency"],
             )
         case _:
             pass

@@ -77,5 +77,8 @@ def _delay_seconds(
 ) -> float:
     retry_after = response.headers.get("Retry-After") if response is not None else None
     if retry_after is not None:
-        return float(retry_after)
+        try:
+            return float(retry_after)
+        except ValueError:
+            pass  # Retry-After can also be an HTTP-date; fall back to backoff.
     return backoff_base_seconds * (2**attempt) + random.uniform(0, backoff_base_seconds)

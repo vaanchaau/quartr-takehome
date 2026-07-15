@@ -1,4 +1,4 @@
-"""Fetch SEC's ticker-to-CIK reference file and save it as raw JSON and CSV."""
+"""Get SEC's ticker-to-CIK reference file and save it as raw JSON and CSV."""
 
 import csv
 import datetime
@@ -6,7 +6,7 @@ import json
 import os
 import re
 
-from .client import fetch_company_tickers
+from . import client
 
 RAW_JSON_FILENAME = "company_tickers.json"
 CSV_FILENAME = "tickers.csv"
@@ -15,14 +15,15 @@ CSV_FIELDS = ("ticker", "cik_number", "cik_str", "company_name", "tags")
 TAG_SUFFIX_PATTERN = re.compile(r"\s*/([^/]*)/?$")
 
 
-async def fetch_and_save_tickers(
+async def get_and_save_tickers(
     user_agent: str, *, max_retries: int, raw_json_dir: str, csv_dir: str
 ) -> None:
-    """Fetch the ticker list from EDGAR unless today's raw JSON already exists,
+    """Get the ticker list from EDGAR unless today's raw JSON already exists,
     then save it as CSV."""
     raw_json_path = _raw_json_path(raw_json_dir)
     if not os.path.exists(raw_json_path):
-        tickers = await fetch_company_tickers(user_agent, max_retries=max_retries)
+        async with client.build_client(user_agent, max_retries=max_retries) as http_client:
+            tickers = await client.get_company_tickers(http_client)
         raw_json_path = _save_raw_json(tickers, raw_json_dir)
     _save_tickers_csv(raw_json_path, csv_dir)
 
@@ -56,6 +57,10 @@ def _load_tickers_json(path: str) -> dict:
         return json.load(f)
 
 
+class NoTickersCsvFoundError(Exception):
+    """Raised when csv_dir has no saved tickers CSV to load."""
+
+
 def load_latest_tickers(csv_dir: str) -> dict[str, dict]:
     """Load the most recently saved tickers CSV, indexed by uppercase ticker."""
     path = _latest_csv_path(csv_dir)
@@ -65,7 +70,12 @@ def load_latest_tickers(csv_dir: str) -> dict[str, dict]:
 
 
 def _latest_csv_path(csv_dir: str) -> str:
-    filenames = sorted(f for f in os.listdir(csv_dir) if f.endswith(CSV_FILENAME))
+    entries = os.listdir(csv_dir) if os.path.isdir(csv_dir) else []
+    filenames = sorted(f for f in entries if f.endswith(CSV_FILENAME))
+    if not filenames:
+        raise NoTickersCsvFoundError(
+            f"no tickers CSV found in {csv_dir!r}; run the sec_company_tickers_list job first"
+        )
     return os.path.join(csv_dir, filenames[-1])
 
 

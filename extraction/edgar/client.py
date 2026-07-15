@@ -1,4 +1,9 @@
-"""EDGAR HTTP client: fetches the SEC ticker-to-CIK reference file."""
+"""EDGAR HTTP client: gets SEC EDGAR ticker, submissions, and filing data.
+
+Callers build one HttpClient (via build_client) per job run and pass it into every
+call below, so a run's requests share a single connection pool instead of opening a
+fresh connection per call.
+"""
 
 from common.http_client import HttpClient
 
@@ -10,35 +15,33 @@ FILING_URL_TEMPLATE = (
 FILING_TIMEOUT_SECONDS = 60.0
 
 
-async def fetch_company_tickers(user_agent: str, *, max_retries: int) -> dict:
+def build_client(user_agent: str, *, max_retries: int) -> HttpClient:
+    """Build a shared EDGAR HTTP client. Uses the filing-document timeout throughout
+    so one client can be reused for both small JSON calls and large filing downloads."""
+    headers = {"User-Agent": user_agent}
+    return HttpClient(headers, max_retries=max_retries, timeout_seconds=FILING_TIMEOUT_SECONDS)
+
+
+async def get_company_tickers(client: HttpClient) -> dict:
     """Download and parse the raw company_tickers.json payload from SEC EDGAR."""
-    headers = {"User-Agent": user_agent, "Accept": "application/json"}
-    async with HttpClient(headers, max_retries=max_retries) as client:
-        response = await client.try_get_with_retry(TICKERS_URL)
-        return response.json()
+    response = await client.try_get_with_retry(TICKERS_URL)
+    return response.json()
 
 
-async def get_company_metadata(cik: str, *, user_agent: str, max_retries: int) -> dict:
+async def get_company_metadata(client: HttpClient, cik: str) -> dict:
     """Download and parse a company's submissions metadata from SEC EDGAR."""
-    headers = {"User-Agent": user_agent, "Accept": "application/json"}
     url = SUBMISSIONS_URL_TEMPLATE.format(cik=cik)
-    async with HttpClient(headers, max_retries=max_retries) as client:
-        response = await client.try_get_with_retry(url)
-        return response.json()
+    response = await client.try_get_with_retry(url)
+    return response.json()
 
 
-async def fetch_filing_html(
-    cik: str, accession_number: str, primary_document: str, *, user_agent: str, max_retries: int
+async def get_filing_html(
+    client: HttpClient, cik: str, accession_number: str, primary_document: str
 ) -> str:
-    """Download a filing's HTML content from SEC EDGAR. Filings can be large, so this
-    uses a more generous timeout than the default."""
-    headers = {"User-Agent": user_agent, "Accept": "text/html"}
+    """Download a filing's HTML content from SEC EDGAR."""
     url = build_filing_url(cik, accession_number, primary_document)
-    async with HttpClient(
-        headers, max_retries=max_retries, timeout_seconds=FILING_TIMEOUT_SECONDS
-    ) as client:
-        response = await client.try_get_with_retry(url)
-        return response.text
+    response = await client.try_get_with_retry(url)
+    return response.text
 
 
 def build_filing_url(cik: str, accession_number: str, primary_document: str) -> str:

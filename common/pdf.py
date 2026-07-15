@@ -1,20 +1,30 @@
 """HTML -> PDF conversion via headless Chromium.
 
-Direct navigation (page.goto against the filing URL) was tried for better fidelity on
-relative assets, but SEC's bot detection returns a 403 ("Undeclared Automated Tool") to
-headless Chromium regardless of User-Agent. So the HTML is fetched separately via
-httpx (which SEC does accept) and rendered from the string instead.
+Callers launch one browser (via launch_browser) per job run and pass it into
+html_to_pdf for every document, instead of paying Chromium startup cost per document.
 """
 
-from playwright.async_api import async_playwright
+from contextlib import asynccontextmanager
+
+from playwright.async_api import Browser, async_playwright
 
 
-async def html_to_pdf(html: str) -> bytes:
-    """Render HTML content to a PDF using headless Chromium."""
+@asynccontextmanager
+async def launch_browser():
+    """Launch one headless Chromium instance, shared across multiple html_to_pdf calls."""
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch()
-        page = await browser.new_page()
+        try:
+            yield browser
+        finally:
+            await browser.close()
+
+
+async def html_to_pdf(browser: Browser, html: str) -> bytes:
+    """Render HTML content to a PDF using the given headless Chromium instance."""
+    page = await browser.new_page()
+    try:
         await page.set_content(html, wait_until="networkidle")
-        pdf_bytes = await page.pdf()
-        await browser.close()
-    return pdf_bytes
+        return await page.pdf()
+    finally:
+        await page.close()
