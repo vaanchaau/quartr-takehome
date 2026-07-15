@@ -1,0 +1,14 @@
+job_list:
+  - job_name: sec_company_tickers_list
+    user_agent: "Van Chau Dao vaanchaau@gmail.com"
+    max_retries: 3
+  - job_name: annual_sec_10k_report
+    user_agent: "Van Chau Dao vaanchaau@gmail.com"
+    companies:
+      - AAPL
+      - META
+      - GOOGL
+      - AMZN
+      - NFLX
+      - GS
+    max_retries: 3

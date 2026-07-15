@@ -1,0 +1,22 @@
+### 1. Ticker -> CIK map
+# Download the full ticker-to-CIK mapping from SEC EDGAR
+GET https://www.sec.gov/files/company_tickers.json
+User-Agent: Van Chau Dao vaanchaau@gmail.com
+Accept: application/json
+
+###
+
+### 2. CIK -> Submissions (Apple: CIK 0000320193)
+# Returns company metadata + all filings (including 10-K) in filings.recent
+GET https://data.sec.gov/submissions/CIK0000320193.json
+User-Agent: Van Chau Dao vaanchaau@gmail.com
+Accept: application/json
+
+###
+
+### 3. Download primary filing document (HTML)
+# Pattern: /Archives/edgar/data/{cik}/{accessionNumber-no-dashes}/{primaryDocument}
+# Example below uses Apple's most recent 10-K (update accession/doc after step 2)
+GET https://www.sec.gov/Archives/edgar/data/320193/000032019324000123/aapl-20240928.htm
+User-Agent: Van Chau Dao vaanchaau@gmail.com
+Accept: text/html
