@@ -11,7 +11,7 @@ from .client import fetch_company_tickers
 RAW_JSON_FILENAME = "company_tickers.json"
 CSV_FILENAME = "tickers.csv"
 CSV_DELIMITER = ";"
-CSV_FIELDS = ("ticker", "cik_str", "company_name", "tags")
+CSV_FIELDS = ("ticker", "cik_number", "cik_str", "company_name", "tags")
 TAG_SUFFIX_PATTERN = re.compile(r"\s*/([^/]*)/?$")
 
 
@@ -56,10 +56,24 @@ def _load_tickers_json(path: str) -> dict:
         return json.load(f)
 
 
+def load_latest_tickers(csv_dir: str) -> dict[str, dict]:
+    """Load the most recently saved tickers CSV, indexed by uppercase ticker."""
+    path = _latest_csv_path(csv_dir)
+    with open(path, newline="") as f:
+        reader = csv.DictReader(f, delimiter=CSV_DELIMITER)
+        return {row["ticker"].upper(): row for row in reader}
+
+
+def _latest_csv_path(csv_dir: str) -> str:
+    filenames = sorted(f for f in os.listdir(csv_dir) if f.endswith(CSV_FILENAME))
+    return os.path.join(csv_dir, filenames[-1])
+
+
 def _to_csv_row(entry: dict) -> dict:
     company_name, tags = _split_company_name_and_tag(entry["title"])
     return {
         "ticker": entry["ticker"],
+        "cik_number": entry["cik_str"],
         "cik_str": _format_cik(entry["cik_str"]),
         "company_name": company_name,
         "tags": tags,

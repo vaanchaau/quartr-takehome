@@ -40,7 +40,13 @@ async def _run_job(job: dict) -> None:
                 csv_dir=job["csv_dir"],
             )
         case "annual_sec_10k_report":
-            perform_annual_sec_10k_report_job()
+            await perform_annual_sec_10k_report_job(
+                job["companies"],
+                user_agent=job["user_agent"],
+                max_retries=job["max_retries"],
+                tickers_csv_dir=job["tickers_csv_dir"],
+                pdf_dir=job["pdf_dir"],
+            )
         case _:
             pass
 

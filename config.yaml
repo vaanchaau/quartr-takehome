@@ -6,7 +6,7 @@ job_list:
     raw_json_dir: files/sec-edgar/raw
     csv_dir: files/sec-edgar/tickers
   - job_name: annual_sec_10k_report
-    flag_dry_run: true
+    flag_dry_run: false
     user_agent: "Van Chau Dao vaanchaau@gmail.com"
     companies:
       - AAPL
@@ -16,3 +16,5 @@ job_list:
       - NFLX
       - GS
     max_retries: 3
+    tickers_csv_dir: files/sec-edgar/tickers
+    pdf_dir: files/sec-edgar/10k-pdf
